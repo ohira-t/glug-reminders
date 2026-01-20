@@ -45,13 +45,43 @@ export async function getCurrentUser(): Promise<User | null> {
   
   if (!user) return null;
 
-  const { data: profile } = await supabase
+  // プロファイルを取得
+  let { data: profile } = await supabase
     .from('profiles')
     .select('*')
     .eq('id', user.id)
     .single();
 
-  if (!profile) return null;
+  // プロファイルがなければ自動作成
+  if (!profile) {
+    const newProfile = {
+      id: user.id,
+      name: user.user_metadata?.name || user.email?.split('@')[0] || 'ユーザー',
+      email: user.email || '',
+      role: 'staff',
+      type: 'internal',
+    };
+
+    const { data: createdProfile, error } = await supabase
+      .from('profiles')
+      .insert(newProfile)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error creating profile:', error);
+      // プロファイル作成に失敗しても、基本情報で続行
+      return {
+        id: user.id,
+        name: newProfile.name,
+        email: newProfile.email,
+        role: 'staff' as const,
+        type: 'internal' as const,
+      };
+    }
+
+    profile = createdProfile;
+  }
 
   return {
     id: profile.id,
