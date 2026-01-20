@@ -1,4 +1,4 @@
-import { User, TaskWithUsers, Category, KanbanColumn, TaskStatus } from '@/types';
+import { User, TaskWithUsers, Category, KanbanColumn } from '@/types';
 
 // Current user - 認証から取得するためのダミー（ログイン後は上書きされる）
 export const currentUser: User = {
@@ -36,8 +36,8 @@ export function generateTicketId(): string {
 
 // Kanban columns
 export const defaultColumns: KanbanColumn[] = [
-  { id: 'backlog', title: 'Backlog', status: 'backlog' as TaskStatus },
-  { id: 'todo', title: 'Todo', status: 'todo' as TaskStatus },
-  { id: 'in_progress', title: 'In Progress', status: 'in_progress' as TaskStatus },
-  { id: 'done', title: 'Done', status: 'done' as TaskStatus },
+  { id: 'backlog', title: 'Backlog', color: '#6B7280', tasks: [] },
+  { id: 'todo', title: 'Todo', color: '#3B82F6', tasks: [] },
+  { id: 'in_progress', title: 'In Progress', color: '#F59E0B', tasks: [] },
+  { id: 'done', title: 'Done', color: '#10B981', tasks: [] },
 ];

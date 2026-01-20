@@ -176,7 +176,7 @@ export function MainLayout() {
   }, [clientCompletedTasks, searchQuery]);
 
   // 全タグを取得
-  const allTags = useMemo(() => getAllTags(tasks), [tasks]);
+  const allTags = useMemo(() => getAllTags(), []);
 
   // Handle task selection
   const handleTaskSelect = (task: TaskWithUsers) => {

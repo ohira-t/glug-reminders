@@ -26,8 +26,15 @@ import { TaskWithUsers, TaskStatus, Comment, User } from '@/types';
 import { mockTasks, mockClients } from '@/lib/mock-data';
 import { cn } from '@/lib/utils';
 
-// デモ用：最初のクライアントとしてログイン
-const currentClient = mockClients[0];
+// デモ用：最初のクライアントとしてログイン（空の場合はダミーユーザー）
+const currentClient: User = mockClients[0] || {
+  id: 'demo-client',
+  name: 'ゲストクライアント',
+  email: 'guest@client.com',
+  role: 'staff',
+  type: 'client',
+  company: 'デモ会社',
+};
 
 function formatDate(dateString: string): string {
   const date = new Date(dateString);

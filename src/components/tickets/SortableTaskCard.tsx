@@ -100,7 +100,10 @@ export function SortableTaskCard({
   return (
     <motion.div
       ref={setNodeRef}
-      style={style}
+      style={{
+        ...style,
+        ...(isSelected ? { boxShadow: `0 0 0 2px ${ringColor}, 0 10px 15px -3px rgba(0, 0, 0, 0.1)` } : {})
+      }}
       layout
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: isDragging ? 0.5 : 1, y: 0 }}
@@ -112,7 +115,6 @@ export function SortableTaskCard({
           : "shadow-[0_1px_3px_rgba(0,0,0,0.1),0_1px_2px_rgba(0,0,0,0.06)] hover:shadow-[0_4px_12px_rgba(0,0,0,0.1)]",
         isDragging && "shadow-xl z-50 opacity-90"
       )}
-      style={isSelected ? { boxShadow: `0 0 0 2px ${ringColor}, 0 10px 15px -3px rgba(0, 0, 0, 0.1)` } : undefined}
     >
       {/* Drag handle */}
       <div 
