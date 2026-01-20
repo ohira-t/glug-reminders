@@ -491,6 +491,7 @@ export function MainLayout() {
         onInternalUsersChange={setLocalUsers}
         onClientsChange={setLocalClients}
         currentUserId={displayUser.id}
+        onRefresh={refresh}
       />
     </div>
   );
