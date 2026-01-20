@@ -1,119 +1,65 @@
-'use client';
-
-import Link from 'next/link';
-import { motion } from 'framer-motion';
-import { 
-  LayoutDashboard, 
-  Settings, 
-  Inbox, 
-  ArrowRight,
-  Sparkles,
-} from 'lucide-react';
+import Image from "next/image";
 
 export default function Home() {
-  const pages = [
-    {
-      href: '/dashboard',
-      icon: LayoutDashboard,
-      title: '社内スタッフ用',
-      description: '自分のタスク管理と、社内メンバー・クライアントへの依頼管理',
-      color: 'from-cyan-400 to-cyan-600',
-      bgColor: 'bg-cyan-50',
-      iconColor: 'text-cyan-600',
-    },
-    {
-      href: '/admin',
-      icon: Settings,
-      title: '管理画面',
-      description: 'カテゴリー、社内メンバー、クライアントの管理',
-      color: 'from-slate-600 to-slate-800',
-      bgColor: 'bg-slate-100',
-      iconColor: 'text-slate-600',
-    },
-    {
-      href: '/client',
-      icon: Inbox,
-      title: 'クライアント用',
-      description: '依頼されたタスクの確認・対応・コメント',
-      color: 'from-orange-400 to-orange-600',
-      bgColor: 'bg-orange-50',
-      iconColor: 'text-orange-600',
-    },
-  ];
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex flex-col">
-      {/* ヘッダー */}
-      <header className="py-8 px-6">
-        <div className="max-w-4xl mx-auto flex items-center justify-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-400 to-cyan-600 flex items-center justify-center shadow-lg shadow-cyan-500/20">
-            <Sparkles className="h-5 w-5 text-white" />
-          </div>
-          <h1 className="text-2xl font-bold bg-gradient-to-r from-cyan-600 to-sky-600 bg-clip-text text-transparent">
-            GLUG Reminders
+    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
+      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
+        <Image
+          className="dark:invert"
+          src="/next.svg"
+          alt="Next.js logo"
+          width={100}
+          height={20}
+          priority
+        />
+        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
+          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
+            To get started, edit the page.tsx file.
           </h1>
+          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
+            Looking for a starting point or more instructions? Head over to{" "}
+            <a
+              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
+              className="font-medium text-zinc-950 dark:text-zinc-50"
+            >
+              Templates
+            </a>{" "}
+            or the{" "}
+            <a
+              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
+              className="font-medium text-zinc-950 dark:text-zinc-50"
+            >
+              Learning
+            </a>{" "}
+            center.
+          </p>
         </div>
-      </header>
-
-      {/* メインコンテンツ */}
-      <main className="flex-1 flex items-center justify-center px-6 pb-12">
-        <div className="max-w-4xl w-full">
-          <motion.p
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="text-center text-slate-500 mb-10"
+        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
+          <a
+            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
+            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
+            target="_blank"
+            rel="noopener noreferrer"
           >
-            アクセスするページを選択してください
-          </motion.p>
-
-          <div className="grid md:grid-cols-3 gap-6">
-            {pages.map((page, index) => (
-              <motion.div
-                key={page.href}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.1 }}
-              >
-                <Link
-                  href={page.href}
-                  className="block bg-white rounded-3xl p-6 shadow-sm border border-slate-200 hover:shadow-lg hover:border-slate-300 hover:-translate-y-1 transition-all duration-300 group"
-                >
-                  <div className={`w-14 h-14 rounded-2xl ${page.bgColor} flex items-center justify-center mb-5`}>
-                    <page.icon className={`h-7 w-7 ${page.iconColor}`} />
-                  </div>
-                  
-                  <h2 className="text-lg font-semibold text-slate-900 mb-2 flex items-center gap-2">
-                    {page.title}
-                    <ArrowRight className="h-4 w-4 text-slate-300 group-hover:text-slate-500 group-hover:translate-x-1 transition-all" />
-                  </h2>
-                  
-                  <p className="text-sm text-slate-500 leading-relaxed">
-                    {page.description}
-                  </p>
-                </Link>
-              </motion.div>
-            ))}
-          </div>
-
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.4 }}
-            className="mt-12 text-center"
+            <Image
+              className="dark:invert"
+              src="/vercel.svg"
+              alt="Vercel logomark"
+              width={16}
+              height={16}
+            />
+            Deploy Now
+          </a>
+          <a
+            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
+            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
+            target="_blank"
+            rel="noopener noreferrer"
           >
-            <p className="text-xs text-slate-400">
-              ※ 本番環境ではログイン機能により自動的に適切なページに遷移します
-            </p>
-          </motion.div>
+            Documentation
+          </a>
         </div>
       </main>
-
-      {/* フッター */}
-      <footer className="py-6 text-center">
-        <p className="text-xs text-slate-400">
-          © 2026 GLUG Inc. All rights reserved.
-        </p>
-      </footer>
     </div>
   );
 }

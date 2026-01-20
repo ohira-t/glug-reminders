@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import { useAuth } from '@/lib/auth/context';
+import { useSupabaseData } from '@/hooks/useSupabaseData';
 import { Header, TaskViewMode } from '@/components/tickets/Header';
 import { MyTasksView } from '@/components/tickets/MyTasksView';
 import { RequestedTasksView } from '@/components/tickets/RequestedTasksView';
@@ -9,54 +10,84 @@ import { ClientsView } from '@/components/tickets/ClientsView';
 import { TicketDetail, EditData } from '@/components/tickets/TicketDetail';
 import { AddTaskModal, NewTaskData } from '@/components/tickets/AddTaskModal';
 import { SettingsModal } from '@/components/tickets/SettingsModal';
-import { 
-  mockTasks, 
-  mockUsers,
-  mockClients,
-  currentUser, 
-  categories as initialCategories,
-  getAllTags,
-  generateTicketId,
-} from '@/lib/mock-data';
 import { TaskWithUsers, TaskStatus, Category, User } from '@/types';
+import { Loader2 } from 'lucide-react';
 
 export function MainLayout() {
   const { signOut } = useAuth();
+  const {
+    tasks,
+    categories,
+    users,
+    clients,
+    currentUser,
+    isLoading,
+    error,
+    createTask,
+    updateTask,
+    deleteTask,
+    completeTask,
+    addComment,
+    createCategory,
+    updateCategory,
+    deleteCategory,
+    reorderTasks,
+    refresh,
+  } = useSupabaseData();
+
   const [viewMode, setViewMode] = useState<TaskViewMode>('my_tasks');
   const [selectedTask, setSelectedTask] = useState<TaskWithUsers | null>(null);
-  const [tasks, setTasks] = useState<TaskWithUsers[]>(mockTasks);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [preSelectedCategoryId, setPreSelectedCategoryId] = useState<string | undefined>(undefined);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   
-  // カテゴリー、社内メンバー、クライアントを状態管理
-  const [categories, setCategories] = useState<Category[]>(initialCategories);
-  const [internalUsers, setInternalUsers] = useState<User[]>(mockUsers);
-  const [clients, setClients] = useState<User[]>(mockClients);
+  // カテゴリー、社内メンバー、クライアントをローカル状態で管理（設定モーダル用）
+  const [localCategories, setLocalCategories] = useState<Category[]>([]);
+  const [localUsers, setLocalUsers] = useState<User[]>([]);
+  const [localClients, setLocalClients] = useState<User[]>([]);
+
+  // Supabaseデータが変わったらローカル状態を更新
+  useMemo(() => {
+    setLocalCategories(categories);
+    setLocalUsers(users);
+    setLocalClients(clients);
+  }, [categories, users, clients]);
   
   // 全ユーザー（社内 + クライアント）
-  const allUsers = useMemo(() => [...internalUsers, ...clients], [internalUsers, clients]);
+  const allUsers = useMemo(() => [...users, ...clients], [users, clients]);
+
+  // ダミーユーザー（ログイン前のフォールバック）
+  const displayUser: User = currentUser || {
+    id: 'guest',
+    name: 'ゲスト',
+    email: 'guest@example.com',
+    role: 'staff',
+    type: 'internal',
+  };
 
   // 自分が担当のタスク（自分宛の依頼 + 自分で作った自分用タスク）- アクティブ
   const myActiveTasks = useMemo(() => {
+    if (!currentUser) return [];
     return tasks.filter(t => 
       t.assignee_id === currentUser.id && 
       t.status !== 'done' && 
       t.status !== 'cancelled'
     );
-  }, [tasks]);
+  }, [tasks, currentUser]);
 
   // 自分が担当のタスク - 完了済み
   const myCompletedTasks = useMemo(() => {
+    if (!currentUser) return [];
     return tasks.filter(t => 
       t.assignee_id === currentUser.id && 
       t.status === 'done'
     );
-  }, [tasks]);
+  }, [tasks, currentUser]);
 
   // 自分が依頼したタスク（他の人に割り当てたもの）- アクティブ
   const requestedTasks = useMemo(() => {
+    if (!currentUser) return [];
     return tasks.filter(t => 
       t.creator_id === currentUser.id && 
       t.assignee_id && 
@@ -64,17 +95,18 @@ export function MainLayout() {
       t.status !== 'done' && 
       t.status !== 'cancelled'
     );
-  }, [tasks]);
+  }, [tasks, currentUser]);
 
   // 自分が依頼したタスク - 完了済み
   const requestedCompletedTasks = useMemo(() => {
+    if (!currentUser) return [];
     return tasks.filter(t => 
       t.creator_id === currentUser.id && 
       t.assignee_id && 
       t.assignee_id !== currentUser.id &&
       t.status === 'done'
     );
-  }, [tasks]);
+  }, [tasks, currentUser]);
 
   // 検索フィルタリング
   const filteredMyTasks = useMemo(() => {
@@ -175,8 +207,14 @@ export function MainLayout() {
     );
   }, [clientCompletedTasks, searchQuery]);
 
-  // 全タグを取得
-  const allTags = useMemo(() => getAllTags(), []);
+  // 全タグを取得（タスクから抽出）
+  const allTags = useMemo(() => {
+    const tagSet = new Set<string>();
+    tasks.forEach(t => {
+      t.tags?.forEach(tag => tagSet.add(tag));
+    });
+    return Array.from(tagSet).sort();
+  }, [tasks]);
 
   // Handle task selection
   const handleTaskSelect = (task: TaskWithUsers) => {
@@ -184,173 +222,161 @@ export function MainLayout() {
   };
 
   // Handle status change
-  const handleStatusChange = (taskId: string, newStatus: TaskStatus) => {
-    setTasks(prev => prev.map(task => {
-      if (task.id === taskId) {
-        return {
-          ...task,
-          status: newStatus,
-          updated_at: new Date().toISOString(),
-          completed_at: newStatus === 'done' ? new Date().toISOString() : undefined,
-        };
-      }
-      return task;
-    }));
+  const handleStatusChange = async (taskId: string, newStatus: TaskStatus) => {
+    const completed = newStatus === 'done';
+    await completeTask(taskId, completed);
 
     // Update selected task if it's the one being changed
     if (selectedTask?.id === taskId) {
       if (newStatus === 'done' || newStatus === 'cancelled') {
         setSelectedTask(null);
-      } else {
-        setSelectedTask(prev => prev ? {
-          ...prev,
-          status: newStatus,
-          updated_at: new Date().toISOString(),
-        } : null);
       }
     }
   };
 
   // Handle complete task (checkbox toggle)
-  const handleCompleteTask = (taskId: string, completed: boolean) => {
-    const newStatus: TaskStatus = completed ? 'done' : 'todo';
-    setTasks(prev => prev.map(task => {
-      if (task.id === taskId) {
-        return {
-          ...task,
-          status: newStatus,
-          updated_at: new Date().toISOString(),
-          completed_at: completed ? new Date().toISOString() : undefined,
-        };
-      }
-      return task;
-    }));
+  const handleCompleteTask = async (taskId: string, completed: boolean) => {
+    await completeTask(taskId, completed);
 
     // Update selected task if it's the one being changed
     if (selectedTask?.id === taskId) {
-      setSelectedTask(prev => prev ? {
-        ...prev,
-        status: newStatus,
-        updated_at: new Date().toISOString(),
-        completed_at: completed ? new Date().toISOString() : undefined,
-      } : null);
+      const updatedTask = tasks.find(t => t.id === taskId);
+      if (updatedTask) {
+        setSelectedTask({
+          ...updatedTask,
+          status: completed ? 'done' : 'todo',
+          completed_at: completed ? new Date().toISOString() : undefined,
+        });
+      }
     }
   };
 
   // Handle add new task
-  const handleAddTask = (data: NewTaskData) => {
-    const assignee = data.assignee_id 
-      ? allUsers.find(u => u.id === data.assignee_id)
-      : allUsers.find(u => u.id === currentUser.id);
-    
-    const category = data.category_id
-      ? categories.find(c => c.id === data.category_id)
-      : undefined;
-
-    const newTask: TaskWithUsers = {
-      id: `task-${Date.now()}`,
-      ticket_id: generateTicketId(),
+  const handleAddTask = async (data: NewTaskData) => {
+    const newTask = await createTask({
       title: data.title,
       description: data.description,
-      status: 'todo',
       priority: data.priority,
+      assignee_id: data.assignee_id || currentUser?.id,
       category_id: data.category_id,
       due_date: data.due_date?.toISOString(),
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-      creator_id: currentUser.id,
-      assignee_id: data.assignee_id || currentUser.id,
-      creator: currentUser,
-      assignee: assignee,
-      category: category,
       tags: data.tags,
-    };
-
-    setTasks(prev => [newTask, ...prev]);
+    });
+    
+    if (newTask) {
+      setIsAddModalOpen(false);
+    }
   };
 
   // Handle save task (inline edit)
-  const handleSaveTask = (taskId: string, data: EditData) => {
-    const assignee = data.assignee_id 
-      ? allUsers.find(u => u.id === data.assignee_id)
-      : allUsers.find(u => u.id === currentUser.id);
-    
-    const category = data.category_id
-      ? categories.find(c => c.id === data.category_id)
-      : undefined;
+  const handleSaveTask = async (taskId: string, data: EditData) => {
+    await updateTask(taskId, {
+      title: data.title,
+      description: data.description,
+      assignee_id: data.assignee_id || currentUser?.id || null,
+      category_id: data.category_id || null,
+      priority: data.priority,
+      due_date: data.due_date?.toISOString() || null,
+      tags: data.tags,
+    });
 
-    setTasks(prev => prev.map(task => {
-      if (task.id === taskId) {
-        const updated = {
-          ...task,
-          title: data.title,
-          description: data.description,
-          assignee_id: data.assignee_id || currentUser.id,
-          assignee: assignee,
-          category_id: data.category_id,
-          category: category,
-          priority: data.priority,
-          due_date: data.due_date?.toISOString(),
-          tags: data.tags,
-          updated_at: new Date().toISOString(),
-        };
-        
-        // Update selected task if it's the one being edited
-        if (selectedTask?.id === taskId) {
-          setSelectedTask(updated);
-        }
-        
-        return updated;
+    // Refresh to get updated data with relations
+    await refresh();
+    
+    // Update selected task
+    if (selectedTask?.id === taskId) {
+      const updatedTask = tasks.find(t => t.id === taskId);
+      if (updatedTask) {
+        setSelectedTask(updatedTask);
       }
-      return task;
-    }));
+    }
   };
 
   // Handle delete task
-  const handleDeleteTask = (taskId: string) => {
-    setTasks(prev => prev.filter(task => task.id !== taskId));
+  const handleDeleteTask = async (taskId: string) => {
+    await deleteTask(taskId);
     if (selectedTask?.id === taskId) {
       setSelectedTask(null);
     }
   };
 
   // Handle add comment
-  const handleAddComment = (taskId: string, content: string) => {
-    const newComment = {
-      id: `comment-${Date.now()}`,
-      task_id: taskId,
-      user_id: currentUser.id,
-      user: currentUser,
-      content,
-      created_at: new Date().toISOString(),
-    };
-
-    setTasks(prev => prev.map(task => {
-      if (task.id === taskId) {
-        const updated = {
-          ...task,
-          comments: [...(task.comments || []), newComment],
-          updated_at: new Date().toISOString(),
-        };
-        
-        // Update selected task if it's the one being commented on
-        if (selectedTask?.id === taskId) {
-          setSelectedTask(updated);
-        }
-        
-        return updated;
-      }
-      return task;
-    }));
+  const handleAddComment = async (taskId: string, content: string) => {
+    const newComment = await addComment(taskId, content);
+    
+    if (newComment && selectedTask?.id === taskId) {
+      setSelectedTask({
+        ...selectedTask,
+        comments: [...(selectedTask.comments || []), newComment],
+      });
+    }
   };
 
+  // Handle category changes from settings modal
+  const handleCategoriesChange = async (newCategories: Category[]) => {
+    // 新しく追加されたカテゴリーを作成
+    for (const cat of newCategories) {
+      const exists = categories.find(c => c.id === cat.id);
+      if (!exists) {
+        await createCategory(cat.name, cat.color);
+      }
+    }
+    
+    // 削除されたカテゴリーを削除
+    for (const cat of categories) {
+      const exists = newCategories.find(c => c.id === cat.id);
+      if (!exists) {
+        await deleteCategory(cat.id);
+      }
+    }
+    
+    // 更新されたカテゴリーを更新
+    for (const cat of newCategories) {
+      const original = categories.find(c => c.id === cat.id);
+      if (original && (original.name !== cat.name || original.color !== cat.color)) {
+        await updateCategory(cat.id, { name: cat.name, color: cat.color });
+      }
+    }
+    
+    await refresh();
+  };
+
+  // ローディング表示
+  if (isLoading) {
+    return (
+      <div className="h-screen flex items-center justify-center bg-[#F2F2F7]">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin text-[#007AFF] mx-auto mb-4" />
+          <p className="text-[#8E8E93]">読み込み中...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // エラー表示
+  if (error) {
+    return (
+      <div className="h-screen flex items-center justify-center bg-[#F2F2F7]">
+        <div className="text-center">
+          <p className="text-[#FF3B30] mb-4">{error}</p>
+          <button
+            onClick={refresh}
+            className="px-4 py-2 bg-[#007AFF] text-white rounded-lg hover:bg-[#007AFF]/90"
+          >
+            再読み込み
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="h-screen flex flex-col bg-slate-50">
+    <div className="h-screen flex flex-col bg-[#F2F2F7]">
       {/* Header */}
       <Header
         viewMode={viewMode}
         onViewModeChange={setViewMode}
-        user={currentUser}
+        user={displayUser}
         myTasksCount={myActiveTasks.length}
         requestedCount={requestedTasks.length}
         clientsCount={clientActiveTasks.length}
@@ -388,7 +414,7 @@ export function MainLayout() {
             users={allUsers}
             selectedTaskId={selectedTask?.id || null}
             onTaskSelect={handleTaskSelect}
-            currentUserId={currentUser.id}
+            currentUserId={displayUser.id}
           />
         )}
         {viewMode === 'clients' && (
@@ -399,7 +425,7 @@ export function MainLayout() {
             selectedTaskId={selectedTask?.id || null}
             onTaskSelect={handleTaskSelect}
             onCompleteTask={handleCompleteTask}
-            currentUserId={currentUser.id}
+            currentUserId={displayUser.id}
           />
         )}
       </div>
@@ -412,7 +438,7 @@ export function MainLayout() {
         onSave={handleSaveTask}
         onDelete={handleDeleteTask}
         onAddComment={handleAddComment}
-        currentUser={currentUser}
+        currentUser={displayUser}
         users={allUsers}
         categories={categories}
         onPrev={() => {
@@ -446,11 +472,11 @@ export function MainLayout() {
         open={isAddModalOpen}
         onOpenChange={setIsAddModalOpen}
         onSubmit={handleAddTask}
-        internalUsers={internalUsers}
+        internalUsers={users}
         clients={clients}
         categories={categories}
         tags={allTags}
-        currentUserId={currentUser.id}
+        currentUserId={displayUser.id}
         defaultCategoryId={preSelectedCategoryId}
       />
 
@@ -458,13 +484,13 @@ export function MainLayout() {
       <SettingsModal
         open={isSettingsOpen}
         onOpenChange={setIsSettingsOpen}
-        categories={categories}
-        internalUsers={internalUsers}
-        clients={clients}
-        onCategoriesChange={setCategories}
-        onInternalUsersChange={setInternalUsers}
-        onClientsChange={setClients}
-        currentUserId={currentUser.id}
+        categories={localCategories}
+        internalUsers={localUsers}
+        clients={localClients}
+        onCategoriesChange={handleCategoriesChange}
+        onInternalUsersChange={setLocalUsers}
+        onClientsChange={setLocalClients}
+        currentUserId={displayUser.id}
       />
     </div>
   );

@@ -44,6 +44,7 @@ export interface Task {
   assignee_id?: string;
   completed_at?: string;
   tags?: string[];
+  display_order?: number;
 }
 
 // Comment type
