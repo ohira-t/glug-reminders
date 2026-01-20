@@ -1,26 +1,147 @@
 @import "tailwindcss";
+@import "tw-animate-css";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+@custom-variant dark (&:is(.dark *));
 
 @theme inline {
+  --font-sans: var(--font-geist-sans), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: var(--font-geist-mono);
+
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  /* Priority Colors */
+  --color-priority-urgent: var(--priority-urgent);
+  --color-priority-high: var(--priority-high);
+  --color-priority-medium: var(--priority-medium);
+  --color-priority-low: var(--priority-low);
+
+  /* Status Colors */
+  --color-status-backlog: var(--status-backlog);
+  --color-status-todo: var(--status-todo);
+  --color-status-in-progress: var(--status-in-progress);
+  --color-status-done: var(--status-done);
+  --color-status-cancelled: var(--status-cancelled);
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+:root {
+  --radius: 0.625rem;
+
+  /* Light theme - iOS System Colors */
+  --background: #F2F2F7;
+  --foreground: #1C1C1E;
+
+  --card: #ffffff;
+  --card-foreground: #1C1C1E;
+
+  --popover: #ffffff;
+  --popover-foreground: #1C1C1E;
+
+  /* Primary - Cyan/Sky blue */
+  --primary: #007AFF;
+  --primary-foreground: #ffffff;
+
+  --secondary: #F2F2F7;
+  --secondary-foreground: #3C3C43;
+
+  --muted: #F2F2F7;
+  --muted-foreground: #8E8E93;
+
+  --accent: #E5F4FF;
+  --accent-foreground: #007AFF;
+
+  --destructive: #FF3B30;
+
+  --border: #C6C6C8;
+  --input: #E5E5EA;
+  --ring: #007AFF;
+
+  /* Priority Colors */
+  --priority-urgent: #dc2626;
+  --priority-high: #ea580c;
+  --priority-medium: #ca8a04;
+  --priority-low: #6b7280;
+
+  /* Status Colors */
+  --status-backlog: #6b7280;
+  --status-todo: #2563eb;
+  --status-in-progress: #7c3aed;
+  --status-done: #16a34a;
+  --status-cancelled: #dc2626;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "rlig" 1, "calt" 1;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@layer utilities {
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: #cbd5e1 transparent;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 3px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+  }
+
+  .ticket-card {
+    @apply relative bg-card rounded-xl p-4 transition-all duration-200;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.06);
+  }
+
+  .ticket-card:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12), 0 2px 4px rgba(0, 0, 0, 0.08);
+  }
+
+  .kanban-column {
+    @apply flex flex-col min-w-[320px] max-w-[320px] bg-white/60 rounded-2xl;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  }
+
+  .priority-bar {
+    @apply absolute left-0 top-0 bottom-0 w-1 rounded-l-lg;
+  }
 }
