@@ -213,10 +213,10 @@ export function MyTasksView({
 
   if (tasksByCategory.length === 0) {
     return (
-      <div className="flex-1 flex items-center justify-center">
+      <div className="h-full flex items-center justify-center min-h-[calc(100vh-120px)]">
         <div className="text-center">
-          <Folder className="h-12 w-12 text-slate-300 mx-auto mb-3" />
-          <p className="text-slate-500">担当タスクはありません</p>
+          <Folder className="h-12 w-12 text-[#C6C6C8] mx-auto mb-3" />
+          <p className="text-[#8E8E93]">担当タスクはありません</p>
         </div>
       </div>
     );

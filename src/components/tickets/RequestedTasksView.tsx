@@ -76,10 +76,10 @@ export function RequestedTasksView({ tasks, allTasks, users, selectedTaskId, onT
 
   if (assigneeGroups.length === 0) {
     return (
-      <div className="flex-1 flex items-center justify-center">
+      <div className="h-full flex items-center justify-center min-h-[calc(100vh-120px)]">
         <div className="text-center">
-          <Send className="h-12 w-12 text-slate-300 mx-auto mb-3" />
-          <p className="text-slate-500">依頼中のタスクはありません</p>
+          <Send className="h-12 w-12 text-[#C6C6C8] mx-auto mb-3" />
+          <p className="text-[#8E8E93]">依頼中のタスクはありません</p>
         </div>
       </div>
     );

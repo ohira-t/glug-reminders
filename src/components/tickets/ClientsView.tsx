@@ -236,7 +236,7 @@ export function ClientsView({
 
   if (tasksByClient.length === 0) {
     return (
-      <div className="flex-1 flex items-center justify-center">
+      <div className="h-full flex items-center justify-center min-h-[calc(100vh-120px)]">
         <div className="text-center">
           <Building2 className="h-12 w-12 text-[#C6C6C8] mx-auto mb-3" />
           <p className="text-[#8E8E93]">クライアントへの依頼タスクはありません</p>
