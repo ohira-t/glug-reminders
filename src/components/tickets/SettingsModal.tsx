@@ -146,63 +146,74 @@ export function SettingsModal({
   const handleSaveInternal = async () => {
     if (!newInternalName.trim() || !newInternalEmail.trim()) return;
     
-    setIsLoading(true);
-    
-    try {
-      if (editingInternalId) {
-        // 既存ユーザーの更新
-        const result = await updateUserProfile(editingInternalId, {
-          name: newInternalName.trim(),
-        });
-        
-        if (result.success) {
-          showMessage('success', result.message);
-          onRefresh?.();
-        } else {
-          showMessage('error', result.message);
-        }
-        setEditingInternalId(null);
-      } else {
-        // 新規ユーザーの作成
-        let result;
-        if (useInvite) {
-          result = await inviteUser({
-            email: newInternalEmail.trim(),
-            name: newInternalName.trim(),
-            type: 'internal',
-            role: 'staff',
-          });
-        } else {
-          if (!newInternalPassword) {
-            showMessage('error', 'パスワードを入力してください');
-            setIsLoading(false);
-            return;
-          }
-          result = await createUserWithPassword({
-            email: newInternalEmail.trim(),
-            name: newInternalName.trim(),
-            type: 'internal',
-            role: 'staff',
-            password: newInternalPassword,
-          });
-        }
-        
-        if (result.success) {
-          showMessage('success', result.message);
-          onRefresh?.();
-          setShowInternalForm(false);
-        } else {
-          showMessage('error', result.message);
-        }
+    if (editingInternalId) {
+      // 既存ユーザーの更新 - オプティミスティック
+      onInternalUsersChange(internalUsers.map(u => 
+        u.id === editingInternalId 
+          ? { ...u, name: newInternalName.trim() }
+          : u
+      ));
+      setEditingInternalId(null);
+      showMessage('success', '更新しました');
+      
+      // バックグラウンドでSupabaseを更新
+      updateUserProfile(editingInternalId, { name: newInternalName.trim() });
+    } else {
+      // 新規ユーザーの作成
+      if (!useInvite && !newInternalPassword) {
+        showMessage('error', 'パスワードを入力してください');
+        return;
       }
-    } catch (err) {
-      showMessage('error', 'エラーが発生しました');
-    } finally {
-      setIsLoading(false);
-      setNewInternalName('');
-      setNewInternalEmail('');
-      setNewInternalPassword('');
+      
+      // オプティミスティックに追加
+      const tempId = `temp-${Date.now()}`;
+      const newUser: User = {
+        id: tempId,
+        name: newInternalName.trim(),
+        email: newInternalEmail.trim(),
+        role: 'staff',
+        type: 'internal',
+      };
+      onInternalUsersChange([...internalUsers, newUser]);
+      setShowInternalForm(false);
+      showMessage('success', useInvite ? '招待を送信中...' : '追加しました');
+      
+      // バックグラウンドでSupabaseに作成
+      const emailVal = newInternalEmail.trim();
+      const nameVal = newInternalName.trim();
+      const passVal = newInternalPassword;
+      const inviteVal = useInvite;
+      
+      (async () => {
+        let result;
+        if (inviteVal) {
+          result = await inviteUser({
+            email: emailVal,
+            name: nameVal,
+            type: 'internal',
+            role: 'staff',
+          });
+        } else {
+          result = await createUserWithPassword({
+            email: emailVal,
+            name: nameVal,
+            type: 'internal',
+            role: 'staff',
+            password: passVal,
+          });
+        }
+        
+        if (result.success && result.userId) {
+          if (inviteVal) showMessage('success', '招待メールを送信しました');
+        } else if (!result.success) {
+          showMessage('error', result.message);
+        }
+      })();
     }
+    
+    setNewInternalName('');
+    setNewInternalEmail('');
+    setNewInternalPassword('');
   };
 
   const cancelEditInternal = () => {
@@ -214,25 +225,19 @@ export function SettingsModal({
 
   const handleDeleteInternal = async (id: string) => {
     if (id === currentUserId) return;
-    
     if (!confirm('このユーザーを削除しますか？')) return;
     
-    setIsLoading(true);
-    try {
-      const result = await deleteUser(id);
-      if (result.success) {
-        showMessage('success', result.message);
-        onRefresh?.();
-      } else {
-        showMessage('error', result.message);
-      }
-    } catch (err) {
-      showMessage('error', 'エラーが発生しました');
-    } finally {
-      setIsLoading(false);
-    }
-    
+    // オプティミスティックに削除
+    onInternalUsersChange(internalUsers.filter(u => u.id !== id));
     if (editingInternalId === id) cancelEditInternal();
+    showMessage('success', '削除しました');
+    
+    // バックグラウンドでSupabaseから削除
+    deleteUser(id).then(result => {
+      if (!result.success) {
+        showMessage('error', '削除に失敗しました。ページを更新してください。');
+      }
+    });
   };
 
   // === クライアント ===
@@ -247,67 +252,82 @@ export function SettingsModal({
   const handleSaveClient = async () => {
     if (!newClientName.trim() || !newClientEmail.trim()) return;
     
-    setIsLoading(true);
-    
-    try {
-      if (editingClientId) {
-        // 既存クライアントの更新
-        const result = await updateUserProfile(editingClientId, {
-          name: newClientName.trim(),
-          company: newClientCompany.trim() || undefined,
-        });
-        
-        if (result.success) {
-          showMessage('success', result.message);
-          onRefresh?.();
-        } else {
-          showMessage('error', result.message);
-        }
-        setEditingClientId(null);
-      } else {
-        // 新規クライアントの作成
-        let result;
-        if (useClientInvite) {
-          result = await inviteUser({
-            email: newClientEmail.trim(),
-            name: newClientName.trim(),
-            type: 'client',
-            role: 'staff',
-            company: newClientCompany.trim() || undefined,
-          });
-        } else {
-          if (!newClientPassword) {
-            showMessage('error', 'パスワードを入力してください');
-            setIsLoading(false);
-            return;
-          }
-          result = await createUserWithPassword({
-            email: newClientEmail.trim(),
-            name: newClientName.trim(),
-            type: 'client',
-            role: 'staff',
-            company: newClientCompany.trim() || undefined,
-            password: newClientPassword,
-          });
-        }
-        
-        if (result.success) {
-          showMessage('success', result.message);
-          onRefresh?.();
-          setShowClientForm(false);
-        } else {
-          showMessage('error', result.message);
-        }
+    if (editingClientId) {
+      // 既存クライアントの更新 - オプティミスティック
+      onClientsChange(clients.map(c => 
+        c.id === editingClientId 
+          ? { ...c, name: newClientName.trim(), company: newClientCompany.trim() || undefined }
+          : c
+      ));
+      setEditingClientId(null);
+      showMessage('success', '更新しました');
+      
+      // バックグラウンドでSupabaseを更新
+      updateUserProfile(editingClientId, { 
+        name: newClientName.trim(), 
+        company: newClientCompany.trim() || undefined 
+      });
+    } else {
+      // 新規クライアントの作成
+      if (!useClientInvite && !newClientPassword) {
+        showMessage('error', 'パスワードを入力してください');
+        return;
       }
-    } catch (err) {
-      showMessage('error', 'エラーが発生しました');
-    } finally {
-      setIsLoading(false);
-      setNewClientName('');
-      setNewClientEmail('');
-      setNewClientCompany('');
-      setNewClientPassword('');
+      
+      // オプティミスティックに追加
+      const tempId = `temp-${Date.now()}`;
+      const newClient: User = {
+        id: tempId,
+        name: newClientName.trim(),
+        email: newClientEmail.trim(),
+        role: 'staff',
+        type: 'client',
+        company: newClientCompany.trim() || undefined,
+      };
+      onClientsChange([...clients, newClient]);
+      setShowClientForm(false);
+      showMessage('success', useClientInvite ? '招待を送信中...' : '追加しました');
+      
+      // バックグラウンドでSupabaseに作成
+      const emailVal = newClientEmail.trim();
+      const nameVal = newClientName.trim();
+      const companyVal = newClientCompany.trim() || undefined;
+      const passVal = newClientPassword;
+      const inviteVal = useClientInvite;
+      
+      (async () => {
+        let result;
+        if (inviteVal) {
+          result = await inviteUser({
+            email: emailVal,
+            name: nameVal,
+            type: 'client',
+            role: 'staff',
+            company: companyVal,
+          });
+        } else {
+          result = await createUserWithPassword({
+            email: emailVal,
+            name: nameVal,
+            type: 'client',
+            role: 'staff',
+            company: companyVal,
+            password: passVal,
+          });
+        }
+        
+        if (result.success && result.userId) {
+          if (inviteVal) showMessage('success', '招待メールを送信しました');
+        } else if (!result.success) {
+          showMessage('error', result.message);
+        }
+      })();
     }
+    
+    setNewClientName('');
+    setNewClientEmail('');
+    setNewClientCompany('');
+    setNewClientPassword('');
   };
 
   const cancelEditClient = () => {
@@ -321,22 +341,17 @@ export function SettingsModal({
   const handleDeleteClient = async (id: string) => {
     if (!confirm('このクライアントを削除しますか？')) return;
     
-    setIsLoading(true);
-    try {
-      const result = await deleteUser(id);
-      if (result.success) {
-        showMessage('success', result.message);
-        onRefresh?.();
-      } else {
-        showMessage('error', result.message);
-      }
-    } catch (err) {
-      showMessage('error', 'エラーが発生しました');
-    } finally {
-      setIsLoading(false);
-    }
-    
+    // オプティミスティックに削除
+    onClientsChange(clients.filter(c => c.id !== id));
     if (editingClientId === id) cancelEditClient();
+    showMessage('success', '削除しました');
+    
+    // バックグラウンドでSupabaseから削除
+    deleteUser(id).then(result => {
+      if (!result.success) {
+        showMessage('error', '削除に失敗しました。ページを更新してください。');
+      }
+    });
   };
 
   const tabs = [
