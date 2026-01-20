@@ -68,15 +68,25 @@ export function useSupabaseData() {
     due_date?: string;
     tags?: string[];
   }) => {
-    if (!currentUser) return null;
+    if (!currentUser) {
+      console.error('Cannot create task: currentUser is null');
+      alert('ユーザー情報が取得できません。ページをリロードしてください。');
+      return null;
+    }
+    
+    console.log('Creating task with creator_id:', currentUser.id);
     
     const newTask = await createTask({
       ...task,
       creator_id: currentUser.id,
     });
     
+    console.log('Created task result:', newTask);
+    
     if (newTask) {
       setTasks(prev => [newTask, ...prev]);
+    } else {
+      alert('タスクの作成に失敗しました。');
     }
     return newTask;
   };
